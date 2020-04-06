@@ -3,7 +3,6 @@ from imdbMovie import movie
 from datetime import datetime
 import random
 import copy
-import sys
 
 
 def genreCount(movies):
@@ -17,14 +16,13 @@ def genreCount(movies):
     return genresCount
 
 
-movies = []
+moviesRaw = []
 sLine = []
 genresCount = dict()
 time = datetime.now()
 crew = dict()
 crewMember = dict()
-edge = dict()
-movieEdges = dict()
+movieEdgesRaw = dict()
 moviesDict = dict()
 
 # with open("Tsv\imdbCrew.tsv", encoding="utf-8") as tsv:
@@ -58,30 +56,36 @@ moviesDict = dict()
 #                         crewMember[writer] = [sLine[0]]
 
 
-with open("Tsv\imdbPrincipals.tsv", encoding="utf-8") as tsv:
+# with open("Tsv\imdbPrincipals.tsv", encoding="utf-8") as tsv:
+#     next(tsv)
+#     for line in tsv:
+#         sLine = line.split("\t")
+#         if sLine[0] in crew:
+#             crew[sLine[0]].append(sLine[2])
+#         else:
+#             crew[sLine[0]] = [sLine[2]]
+
+with open("Tsv\imdbCrew.tsv", encoding="utf-8") as tsv:
     next(tsv)
     for line in tsv:
         sLine = line.split("\t")
-        if sLine[0] in crew:
-            crew[sLine[0]].append(sLine[2])
-        else:
-            crew[sLine[0]] = [sLine[2]]
+        crew[sLine[0]] = sLine
 
 with open("Tsv\ImdbBasics.tsv", encoding="utf-8") as tsv:
     next(tsv)
     for line in tsv:
         sLine = line.split("\t")
-        if sLine[1] == "movie" and sLine[5] != "\\N" and sLine[8] != "\\N\n" and "1960" <= sLine[5] < "1970" and sLine[
-            4] != "1" and "Adult" not in sLine[8] and "Short" not in sLine[8] and "Game-Show" not in sLine[
-            8] and "News" not in sLine[8] and "Talk-Show" not in sLine[8]:
+        if sLine[5] != "\\N" and sLine[8] != "\\N\n" and "2000" <= sLine[5] < "2010":
             if sLine[0] in crew:  # if the movie has no social features it cant be predicted
                 mov = movie(sLine)
-                movies.append(mov)
-                for person in crew[sLine[0]]:
-                    if person in crewMember:
-                        crewMember[person].append(sLine[0])
-                    else:
-                        crewMember[person] = [sLine[0]]
+                moviesRaw.append(mov)
+                directors = crew[sLine[0]][1].split(",")
+                if directors != "\\N":
+                    for director in directors:
+                        if director in crewMember:
+                            crewMember[director].append(sLine[0])
+                        else:
+                            crewMember[director] = [sLine[0]]
 
 crewMember["\\N"] = []  # works good enough but doesent remove the actual key
 # print(crewMember["\\N"])
@@ -89,25 +93,44 @@ for member, value in crewMember.items():
     if len(value) > 1:
         for i in range(0, len(value), 1):
             for j in range(i + 1, len(value), 1):
-                index = "{0}:{1}".format(value[i], value[j])
-                index2 = "{1}:{0}".format(value[i], value[j])
-                if index in edge:
-                    edge[index] += 1
+                if value[i] in movieEdgesRaw:
+                    movieEdgesRaw[value[i]].append(value[j])
                 else:
-                    edge[index] = 1
-                if index2 in edge:
-                    edge[index2] += 1
-                else:
-                    edge[index2] = 1
-                if value[i] in movieEdges:
-                    movieEdges[value[i]].append(value[j])
-                else:
-                    movieEdges[value[i]] = [value[j]]
+                    movieEdgesRaw[value[i]] = [value[j]]
 
-count = 0
-for member, value in edge.items():
-    if value > 1:
-        count += 1
+
+movies = []
+movieEdges = dict()
+moviesPrev = moviesRaw
+movieEdgesPrev = movieEdgesRaw
+for i in range(0, 1):
+    movies = []
+    movieEdges = dict()
+    for movie in moviesPrev:
+        if movie.id in movieEdgesPrev and len(movieEdgesPrev[movie.id]) > 5:
+            movies.append(movie)
+            movieEdges[movie.id] = movieEdgesPrev[movie.id]
+
+    moviesDict = dict()
+    for movie in movies:
+        moviesDict[movie.id] = movie
+
+    for id, edgeList in movieEdges.items():
+        newList = []
+        for movieId in edgeList:
+            if movieId in moviesDict:
+                newList.append(movieId)
+        movieEdges[id] = newList
+    print("removed {0} movies".format(len(moviesPrev) - len(movies)))
+    moviesPrev = movies
+    movieEdgesPrev = movieEdges
+
+print("removed total {0} movies".format(len(moviesRaw) - len(movies)))
+
+actualMovies = 0
+for movie in movies:
+    if movie.titleType == "movie":
+        actualMovies += 1
 
 genreCountTotal = genreCount(movies)
 
@@ -115,25 +138,27 @@ print(genreCount(movies))
 print(genreCountTotal.keys())
 
 print(datetime.now() - time)
-print(count)
 # print(edge)
-print("nr of edges: {0}".format(len(edge)))
+print("nr of edges: {0}".format(len(movieEdges)))
 print("nr of movies: {0}".format(len(movies)))
+print("nr of actual movies: {0}".format(actualMovies))
 print("nr of crew: {0}".format(len(crew)))
 print("nr of crew members: {0}".format(len(crewMember)))
 
 moviesTrain = copy.deepcopy(movies)
+
 for movie in moviesTrain:
-    if random.random() > 0.01:
+    if random.random() > 0.20:
         movie.genres = []
         movie.markedAsUnknown = True
 
+moviesDict = dict()
 for movie in moviesTrain:
     moviesDict[movie.id] = movie
 
 print(genreCount(moviesTrain))
 previousCount = dict()
-maxItr = 1000
+maxItr = 100
 for i in range(0, maxItr):
     print("{0}/{1}".format(i, maxItr))
     print(genreCount(moviesTrain))
@@ -143,18 +168,20 @@ for i in range(0, maxItr):
     for index, movie in enumerate(moviesTrain):
         if movie.markedAsUnknown and movie.id in movieEdges:
             genres = dict()
+            totalNeighbours = 0
             for neighbourEdge in movieEdges[movie.id]:
                 neighbourMovie = moviesDict[neighbourEdge]
                 if neighbourMovie.genres:
+                    totalNeighbours += 1
                     for genre in neighbourMovie.genres:
                         if genre in genres:
                             genres[genre] += 1
                         else:
                             genres[genre] = 1
-            totalNeighbours = len(movieEdges[movie.id])
+
             movie.genres = []
             for genre, number in genres.items():
-                if number / totalNeighbours >= 0.5:
+                if totalNeighbours != 0 and number / totalNeighbours >= 0.75:
                     movie.genres.append(genre)
 
 print(genreCount(moviesTrain))
@@ -215,7 +242,7 @@ for genre in possibleGenres:
 
     if (confusionMatrix[genre][4] + confusionMatrix[genre][5]) != 0:
         confusionMatrix[genre][6] = (2 * confusionMatrix[genre][4] * confusionMatrix[genre][5]) / (
-                    confusionMatrix[genre][4] + confusionMatrix[genre][5])
+                confusionMatrix[genre][4] + confusionMatrix[genre][5])
     avgF1 += confusionMatrix[genre][6]
     print("{0}:{1}]".format(genre, confusionMatrix[genre]))
 

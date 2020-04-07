@@ -1,19 +1,11 @@
 import csv
 from imdbMovie import movie
+from lib import Helper
+from algorithms import Algorithms
 from datetime import datetime
 import random
 import copy
 
-
-def genreCount(movies):
-    genresCount = dict()
-    for movie in movies:
-        for genre in movie.genres:
-            if genre in genresCount:
-                genresCount[genre] += 1
-            else:
-                genresCount[genre] = 1
-    return genresCount
 
 
 moviesRaw = []
@@ -132,9 +124,9 @@ for movie in movies:
     if movie.titleType == "movie":
         actualMovies += 1
 
-genreCountTotal = genreCount(movies)
+genreCountTotal = Helper.genreCount(movies)
 
-print(genreCount(movies))
+print(Helper.genreCount(movies))
 print(genreCountTotal.keys())
 
 print(datetime.now() - time)
@@ -156,35 +148,12 @@ moviesDict = dict()
 for movie in moviesTrain:
     moviesDict[movie.id] = movie
 
-print(genreCount(moviesTrain))
-previousCount = dict()
-maxItr = 100
-for i in range(0, maxItr):
-    print("{0}/{1}".format(i, maxItr))
-    print(genreCount(moviesTrain))
-    if previousCount == genreCount(moviesTrain):
-        break
-    previousCount = genreCount(moviesTrain)
-    for index, movie in enumerate(moviesTrain):
-        if movie.markedAsUnknown and movie.id in movieEdges:
-            genres = dict()
-            totalNeighbours = 0
-            for neighbourEdge in movieEdges[movie.id]:
-                neighbourMovie = moviesDict[neighbourEdge]
-                if neighbourMovie.genres:
-                    totalNeighbours += 1
-                    for genre in neighbourMovie.genres:
-                        if genre in genres:
-                            genres[genre] += 1
-                        else:
-                            genres[genre] = 1
+print(Helper.genreCount(moviesTrain))
+Algorithms.RNStar(moviesTrain, movieEdges, moviesDict)
 
-            movie.genres = []
-            for genre, number in genres.items():
-                if totalNeighbours != 0 and number / totalNeighbours >= 0.75:
-                    movie.genres.append(genre)
 
-print(genreCount(moviesTrain))
+
+print(Helper.genreCount(moviesTrain))
 countCorrect = 0
 countUnknown = 0
 countNoNeighbours = 0

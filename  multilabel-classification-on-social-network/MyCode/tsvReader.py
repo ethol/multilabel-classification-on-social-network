@@ -149,7 +149,9 @@ for movie in moviesTrain:
     moviesDict[movie.id] = movie
 
 print(Helper.genreCount(moviesTrain))
-Algorithms.RNStar(moviesTrain, movieEdges, moviesDict)
+
+# Algorithms.RNStar(moviesTrain, movieEdges, moviesDict, 5, 0.66)
+Algorithms.pRNStar(moviesTrain, movieEdges, moviesDict, list(genreCountTotal.keys()), 5, 0.15)
 
 
 

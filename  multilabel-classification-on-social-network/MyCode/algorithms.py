@@ -1,8 +1,10 @@
+import operator
+
 from lib import Helper
 
 class Algorithms:
     @staticmethod
-    def RNStar(moviesTrain, movieEdges, moviesDict, maxItr, threshold):
+    def RNStar(moviesTrain, movieEdges, moviesDict, maxItr, traditional, threshold):
         previousCount = dict()
         for i in range(0, maxItr):
             print("{0}/{1}".format(i, maxItr))
@@ -24,13 +26,18 @@ class Algorithms:
                                 else:
                                     genres[genre] = 1
 
-                    movie.genres = []
-                    for genre, number in genres.items():
-                        if totalNeighbours != 0 and (number / totalNeighbours) >= threshold:
-                            movie.genres.append(genre)
+                    if traditional:
+                        if bool(genres):
+                            maxProb = max(genres.items(), key=operator.itemgetter(1))[0]
+                            movie.genres = [maxProb]
+                    else:
+                        movie.genres = []
+                        for genre, number in genres.items():
+                            if totalNeighbours != 0 and (number / totalNeighbours) >= threshold:
+                                movie.genres.append(genre)
 
     @staticmethod
-    def pRNStar(moviesTrain, movieEdges, moviesDict, possibleGenre, maxItr, threshold):
+    def pRNStar(moviesTrain, movieEdges, moviesDict, possibleGenre, maxItr,  traditional, threshold):
 
         #Initialize
         for index, movie in enumerate(moviesTrain):
@@ -64,8 +71,13 @@ class Algorithms:
 
         for index, movie in enumerate(moviesTrain):
             if movie.markedAsUnknown:
-                movie.genres = []
-                for genre in possibleGenre:
-                    if movie.probabilityEstimates[genre] > threshold:
-                        movie.genres.append(genre)
+                if traditional:
+                    maxProb = max(movie.probabilityEstimates.items(), key=operator.itemgetter(1))[0]
+                    movie.genres = [maxProb]
+                else:
+                    movie.genres = []
+                    for genre in possibleGenre:
+                        if not traditional and movie.probabilityEstimates[genre] > threshold:
+                            movie.genres.append(genre)
+
 
